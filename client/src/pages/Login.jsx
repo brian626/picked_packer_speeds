@@ -44,7 +44,6 @@ class Login extends Component {
         this.state = {
             email: '',
             password: '',
-            loggedIn: ls.get('loggedIn')
         }
     }
 
@@ -63,24 +62,19 @@ class Login extends Component {
         const payload = { email, password }
 
         await api.login(payload).then(res => {
-            // console.log('res')
-            // console.log(res)
-
             ls.set('isSupervisor', res.data.data.isSupervisor)
-            ls.set('loggedIn', true)
-            this.setState({ "loggedIn": true })
-            // console.log(`successful login, ls = ${ls.get('loggedIn')}`)
+            this.props.handleLoggedInChange(true)
         })
     }
 
     render() {
-        const { email, password, loggedIn } = this.state
-        if (loggedIn) {
-            // console.log(`redirecting to dashboard, ls = ${ls.get('loggedIn')}`)
+        const { email, password } = this.state
+        const lsLoggedIn = ls.get('loggedIn')
+
+        if (lsLoggedIn) {
             return <Redirect to="/dashboard" />
         }
         else {
-            // console.log('showing login form')
             return (
                 <Wrapper>
                     <Title>Login</Title>

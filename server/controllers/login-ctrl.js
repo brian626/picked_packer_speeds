@@ -2,11 +2,6 @@ const User = require('../models/user-model')
 const bcrypt = require('bcryptjs')
 
 login = async (req, res) => {
-    // if (req.session.loggedIn) {
-    //     console.log('already logged in')
-    //     return res.status(200).json({ success: true, data: { "isSupervisor": req.session.isSupervisor } })
-    // }
-
     const body = req.body
 
     if (!body) {
@@ -37,9 +32,6 @@ login = async (req, res) => {
         req.session.loggedIn = true
         req.session.username = body.email
         req.session.isSupervisor = (req.session.username === "supervisor")
-
-        // console.log(`login - req.session.username: ${req.session.username}`)
-        // console.log(`login - req.session.isSupervisor: ${req.session.isSupervisor}`)
 
         return res.status(200).json({ success: true, data: { "isSupervisor": req.session.isSupervisor } })
     }).catch(err => console.log(err))

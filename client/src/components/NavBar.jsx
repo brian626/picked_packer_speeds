@@ -20,7 +20,7 @@ class NavBar extends Component {
             <Container>
                 <Nav>
                     <Logo />
-                    <Links />
+                    <Links loggedIn={this.props.loggedIn} handleLoggedInChange={this.props.handleLoggedInChange} />
                 </Nav>
             </Container>
         )

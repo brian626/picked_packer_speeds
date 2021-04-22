@@ -2,6 +2,7 @@ import React, { Component } from 'react'
 import api from '../api'
 
 import styled from 'styled-components'
+import bcrypt from 'bcryptjs'
 
 const Title = styled.h1.attrs({
     className: 'h1',
@@ -63,7 +64,8 @@ class UsersInsert extends Component {
 
     handleIncludeUser = async () => {
         const { name, email, password } = this.state
-        const payload = { name, email, password }
+        const hashedPassword = bcrypt.hashSync(password, bcrypt.genSaltSync())
+        const payload = { name, email, hashedPassword }
 
         await api.insertUser(payload).then(res => {
             window.alert(`User inserted successfully`)
@@ -97,7 +99,7 @@ class UsersInsert extends Component {
 
                 <Label>Password: </Label>
                 <InputText
-                    type="text"
+                    type="password"
                     value={password}
                     onChange={this.handleChangeInputPassword}
                 />

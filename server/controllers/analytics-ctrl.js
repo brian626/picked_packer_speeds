@@ -5,8 +5,6 @@ getAnalyticsForUser = async (user) => {
     let userAnalytics = {}
 
     if (user) {
-        // console.log(`looking for orders picked by ${user.email}`)
-
         const analytics =
             await Order.aggregate([ { $match: { picked_by: user.email } },
                                     { $group: {
@@ -21,15 +19,10 @@ getAnalyticsForUser = async (user) => {
         userAnalytics[user.email] = analytics
     }
 
-    // console.log(`returning user analytics`)
-    // console.log(userAnalytics)
     return userAnalytics
 }
 
 getAnalytics = async (req, res) => {
-    // console.log(`getAnalytics - req.session.username: ${req.session.username}`)
-    // console.log(`getAnalytics - req.session.isSupervisor: ${req.session.isSupervisor}`)
-
     if (!req.session.loggedIn) {
         return res.status(401).json({
             success: false,
@@ -71,8 +64,6 @@ getAnalytics = async (req, res) => {
         }
     }
 
-    // console.log(`getAnalytics returning`)
-    // console.log(analytics)
     return res.status(200).json({ success: true, data: { "analytics": analytics } })
 }
 

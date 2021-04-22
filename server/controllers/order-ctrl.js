@@ -4,292 +4,193 @@ const Faker = require('faker')
 
 createOrder = (req, res) => {
     if (!req.session.loggedIn) {
-        return res.status(401).json({
-            success: false,
-            error: 'You must login before creating an order',
-        })
+        return res.status(401).json({ success: false, error: 'You must login before creating an order', })
     } else if (!req.session.isSupervisor) {
-        return res.status(403).json({
-            success: false,
-            error: 'Only supervisors can create orders',
-        })
+        return res.status(403).json({ success: false, error: 'Only supervisors can create orders', })
     }
 
     const body = req.body
-
     if (!body) {
-        return res.status(400).json({
-            success: false,
-            error: 'You must provide an order',
-        })
+        return res.status(400).json({ success: false, error: 'You must provide an order', })
     }
 
     const order = new Order(body)
-
     if (!order) {
-        return res.status(400).json({ success: false, error: err })
+        return res.status(400).json({ success: false, error: 'Order creation failed' })
     }
 
     order
         .save()
         .then(() => {
-            return res.status(201).json({
-                success: true,
-                id: order._id,
-                message: 'Order created!',
-            })
+            return res.status(201).json({ success: true, id: order._id, message: 'Order created!', })
         })
         .catch(error => {
-            return res.status(400).json({
-                error,
-                message: 'Order not created!',
-            })
+            return res.status(400).json({ error, message: 'Order not created!', })
         })
 }
 
 getOrders = async (req, res) => {
-    // console.log(`getOrders - req.session.username: ${req.session.username}`)
-    // console.log(`getOrders - req.session.isSupervisor: ${req.session.isSupervisor}`)
-
     if (!req.session.loggedIn) {
-        return res.status(401).json({
-            success: false,
-            error: 'You must login before getting orders',
-        })
+        return res.status(401).json({ success: false, error: 'You must login before getting orders', })
     }
 
-    await Order.find({}, (err, orders) => {
-        if (err) {
-            return res.status(400).json({ success: false, error: err })
-        }
-        // if (!orders.length) {
-        //     return res.status(200).json({ success: true, error: `No orders found` })
-        // }
-        return res.status(200).json({ success: true, data: orders })
-    }).catch(err => console.log(err))
+    // Supervisors should be show all orders.
+    // Employees should be shown unpicked orders as well as orders that have begun picking.
+    let orders
+    if (req.session.username === 'supervisor')
+    {
+        orders = await Order.find({})
+    } else {
+        orders = await Order.find({ $or: [{'picked_by': req.session.username}, {'picked_by': null}] })
+    }
+
+    if (!orders) {
+        return res.status(400).json({ success: false, error: 'Error retrieving orders' })
+    }
+
+    // A lack of orders is not an error...
+    //
+    // if (!orders.length) {
+    //     return res.status(200).json({ success: true, error: `No orders found` })
+    // }
+
+    return res.status(200).json({ success: true, data: orders })
 }
 
 startPick = async (req, res) => {
     if (!req.session.loggedIn) {
-        return res.status(401).json({
-            success: false,
-            error: 'You must login before starting an order pick',
-        })
+        return res.status(401).json({ success: false, error: 'You must login before starting an order pick', })
     }
 
     const body = req.body
-
     if (!body) {
-        return res.status(400).json({
-            success: false,
-            error: 'You must provide an order to update',
-        })
+        return res.status(400).json({ success: false, error: 'You must provide an order to update', })
     }
 
-    Order.findOne({ _id: req.params.id }, (err, order) => {
-        if (err) {
-            return res.status(404).json({
-                err,
-                message: 'Order not found!',
-            })
-        }
+    const order = await Order.findOne({ _id: req.params.id })
+    if (!order) {
+        return res.status(404).json({ success: false, error: 'Order not found!', })
+    }
 
-        order.picked_by = req.session.username
-        order.pick_start_time = new Date()
+    order.picked_by = req.session.username
+    order.pick_start_time = new Date()
 
-        order
-            .save()
-            .then(() => {
-                return res.status(200).json({
-                    success: true,
-                    id: order._id,
-                    message: 'Order updated!',
-                })
-            })
-            .catch(error => {
-                return res.status(404).json({
-                    error,
-                    message: 'Order not updated!',
-                })
-            })
+    order
+    .save()
+    .then(() => {
+        return res.status(200).json({ success: true, id: order._id, message: 'Order updated!', })
+    })
+    .catch(error => {
+        return res.status(404).json({ error, message: 'Order not updated!', })
     })
 }
 
 stopPick = async (req, res) => {
     if (!req.session.loggedIn) {
-        return res.status(401).json({
-            success: false,
-            error: 'You must login before stopping an order pick',
-        })
+        return res.status(401).json({ success: false, error: 'You must login before stopping an order pick', })
     }
 
     const body = req.body
-
     if (!body) {
-        return res.status(400).json({
-            success: false,
-            error: 'You must provide an order to update',
-        })
+        return res.status(400).json({ success: false, error: 'You must provide an order to update', })
     }
 
-    Order.findOne({ _id: req.params.id }, (err, order) => {
-        if (err) {
-            return res.status(404).json({
-                err,
-                message: 'Order not found!',
-            })
-        }
+    const order = await Order.findOne({ _id: req.params.id })
+    if (!order) {
+        return res.status(404).json({ success: false, message: 'Order not found!', })
+    }
 
-        if (order.picked_by !== req.session.username) {
-            return res.status(403).json({
-                err,
-                message: 'Pick can only be stopped by the employee who started it!',
-            })
-        }
+    if (order.picked_by !== req.session.username) {
+        return res.status(403).json({ err, message: 'Pick can only be stopped by the employee who started it!', })
+    }
 
-        order.pick_end_time = new Date()
+    order.pick_end_time = new Date()
 
-        order
-            .save()
-            .then(() => {
-                return res.status(200).json({
-                    success: true,
-                    id: order._id,
-                    message: 'Order updated!',
-                })
-            })
-            .catch(error => {
-                return res.status(404).json({
-                    error,
-                    message: 'Order not updated!',
-                })
-            })
-    })
+    order
+        .save()
+        .then(() => {
+            return res.status(200).json({ success: true, id: order._id, message: 'Order updated!', })
+        })
+        .catch(error => {
+            return res.status(404).json({ error, message: 'Order not updated!', })
+        })
 }
 
 startPack = async (req, res) => {
     if (!req.session.loggedIn) {
-        return res.status(401).json({
-            success: false,
-            error: 'You must login before starting an order pack',
-        })
+        return res.status(401).json({ success: false, error: 'You must login before starting an order pack', })
     }
 
     const body = req.body
-
     if (!body) {
-        return res.status(400).json({
-            success: false,
-            error: 'You must provide an order to update',
-        })
+        return res.status(400).json({ success: false, error: 'You must provide an order to update', })
+    }
+
+    const order = await Order.findOne({ _id: req.params.id })
+    if (!order) {
+        return res.status(404).json({ success: false, message: 'Order not found!', })
     }
 
     if (order.picked_by !== req.session.username) {
-        return res.status(403).json({
-            err,
-            message: 'Pack can only be started by the employee who picked the order!',
-        })
+        return res.status(403).json({ success: false, message: 'Pack can only be started by the employee who picked the order!', })
     }
 
-    Order.findOne({ _id: req.params.id }, (err, order) => {
-        if (err) {
-            return res.status(404).json({
-                err,
-                message: 'Order not found!',
-            })
-        }
+    order.pack_start_time = new Date()
 
-        order.pack_start_time = new Date()
-
-        order
-            .save()
-            .then(() => {
-                return res.status(200).json({
-                    success: true,
-                    id: order._id,
-                    message: 'Order updated!',
-                })
-            })
-            .catch(error => {
-                return res.status(404).json({
-                    error,
-                    message: 'Order not updated!',
-                })
-            })
-    })
+    order
+        .save()
+        .then(() => {
+            return res.status(200).json({ success: true, id: order._id, message: 'Order updated!', })
+        })
+        .catch(error => {
+            return res.status(404).json({ error, message: 'Order not updated!', })
+        })
 }
 
 stopPack = async (req, res) => {
     if (!req.session.loggedIn) {
-        return res.status(401).json({
-            success: false,
-            error: 'You must login before stopping an order pack',
-        })
+        return res.status(401).json({ success: false, message: 'You must login before stopping an order pack', })
     }
 
     const body = req.body
-
     if (!body) {
-        return res.status(400).json({
-            success: false,
-            error: 'You must provide an order to update',
-        })
+        return res.status(400).json({ success: false, message: 'You must provide an order to update', })
+    }
+
+    const order = await Order.findOne({ _id: req.params.id })
+    if (!order) {
+        return res.status(404).json({ success: false, message: 'Order not found!', })
     }
 
     if (order.picked_by !== req.session.username) {
-        return res.status(403).json({
-            err,
-            message: 'Pack can only be stopped by the employee who picked the order!',
-        })
+        return res.status(403).json({ success: false, message: 'Pack can only be stopped by the employee who picked the order!', })
     }
 
-    Order.findOne({ _id: req.params.id }, (err, order) => {
-        if (err) {
-            return res.status(404).json({
-                err,
-                message: 'Order not found!',
-            })
-        }
+    order.pack_end_time = new Date()
 
-        order.pack_end_time = new Date()
-
-        order
-            .save()
-            .then(() => {
-                return res.status(200).json({
-                    success: true,
-                    id: order._id,
-                    message: 'Order updated!',
-                })
-            })
-            .catch(error => {
-                return res.status(404).json({
-                    error,
-                    message: 'Order not updated!',
-                })
-            })
-    })
+    order
+        .save()
+        .then(() => {
+            return res.status(200).json({ success: true, id: order._id, message: 'Order updated!', })
+        })
+        .catch(error => {
+            return res.status(404).json({ error, message: 'Order not updated!', })
+        })
 }
 
 seedOrders = async (req, res) => {
     if (!req.session.loggedIn) {
-        return res.status(401).json({
-            success: false,
-            error: 'You must login before seeding orders',
-        })
+        return res.status(401).json({ success: false, error: 'You must login before seeding orders', })
     } else if (!req.session.isSupervisor) {
-        return res.status(403).json({
-            success: false,
-            error: 'Only supervisors can seed orders',
-        })
+        return res.status(403).json({ success: false, error: 'Only supervisors can seed orders', })
     }
 
     let ordersCreated = false
-    let orderCreationError = ""
-    const orderStatuses = ["unpicked", "unpacked", "packed"]
+    let orderCreationError = ''
+    const orderStatuses = ['unpicked', 'unpacked', 'packed']
 
-    for (let i = 0; i < 10; i++) {
-        if (orderCreationError !== "") {
+    for (let i = 0; i < 100; i++) {
+        if (orderCreationError !== '') {
             break
         }
 
@@ -305,16 +206,16 @@ seedOrders = async (req, res) => {
         const pack_end_time = pack_start_time + Faker.datatype.number(options = {min: 30000, max: 180000})
 
         // Get a random employee
-        const userCount = await User.countDocuments({ email: { $ne: "supervisor" }})
+        const userCount = await User.countDocuments({ email: { $ne: 'supervisor' }})
         const random = Math.floor(Math.random() * userCount)
-        const random_user = await User.find({ email: { $ne: "supervisor" }}).skip(random).limit(1)
+        const random_user = await User.find({ email: { $ne: 'supervisor' }}).skip(random).limit(1)
 
         const data = {
-            picked_by:       (orderStatus === "unpacked" || orderStatus === "packed") ? random_user[0].email : undefined,
-            pick_start_time: (orderStatus === "unpacked" || orderStatus === "packed") ? pick_start_time : undefined,
-            pick_end_time:   (orderStatus === "unpacked" || orderStatus === "packed") ? pick_end_time : undefined,
-            pack_start_time: (orderStatus === "packed") ? pack_start_time : undefined,
-            pack_end_time:   (orderStatus === "packed") ? pack_end_time : undefined,
+            picked_by:       (orderStatus === 'unpacked' || orderStatus === 'packed') ? random_user[0].email : undefined,
+            pick_start_time: (orderStatus === 'unpacked' || orderStatus === 'packed') ? pick_start_time : undefined,
+            pick_end_time:   (orderStatus === 'unpacked' || orderStatus === 'packed') ? pick_end_time : undefined,
+            pack_start_time: (orderStatus === 'packed') ? pack_start_time : undefined,
+            pack_end_time:   (orderStatus === 'packed') ? pack_end_time : undefined,
         }
 
         const order = new Order(data)
@@ -336,15 +237,9 @@ seedOrders = async (req, res) => {
     }
 
     if (ordersCreated) {
-        return res.status(201).json({
-            success: true,
-            message: 'Orders created!',
-        })
+        return res.status(201).json({ success: true, message: 'Orders created!', })
     } else {
-        return res.status(400).json({
-            orderCreationError,
-            message: 'Orders not created!',
-        })
+        return res.status(400).json({ orderCreationError, message: 'Orders not created!', })
     }
 }
 

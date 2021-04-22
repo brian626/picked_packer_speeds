@@ -5,7 +5,6 @@ import ls from 'local-storage'
 class LoggedInRoute extends Component {
     render() {
       const { component: Component, ...props } = this.props
-
       return (
         <Route
           {...props}

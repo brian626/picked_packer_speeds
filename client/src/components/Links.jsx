@@ -20,21 +20,19 @@ class Links extends Component {
         super(props)
 
         this.state = {
-            loggedIn: ls.get('loggedIn'),
             isSupervisor: ls.get('isSupervisor')
         }
     }
 
     handleLogout = async () => {
         ls.remove('isSupervisor')
-        ls.remove('loggedIn')
-        // this.state.loggedIn = false
-        this.setState({ "loggedIn": false })
+        this.setState({ "isSupervisor": false })
+        this.props.handleLoggedInChange(false)
     }
 
     render() {
-        const { loggedIn, isSupervisor } = this.state
-
+        const { isSupervisor } = this.state
+        const loggedIn = this.props.loggedIn
         var loginItem
         var analyticsItem
         if (loggedIn) {

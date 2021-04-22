@@ -53,15 +53,9 @@ class Analytics extends Component {
                             pack: weekAnalytics["averagePackTime"] / 1000,
                         }
                     )
-                    // console.log(`pushed {${weekAnalytics["_id"]},${weekAnalytics["averagePickTime"] / 1000},${weekAnalytics["averagePackTime"] / 1000}} for ${a}`)
-                    // console.log(`data[${a}] is now`)
-                    // console.log(data[a])
                 })
             })
         }
-
-        // console.log("data")
-        // console.log(data)
 
         return(
             Object.keys(data).map((d,i) => {
